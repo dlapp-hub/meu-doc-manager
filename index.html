@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dl Gestão - Gestão de Documentos</title>
+    <title>DocManager Pro - Gestão de Documentos</title>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -27,18 +27,13 @@
                     <i class="fa-solid fa-file-contract text-2xl" aria-hidden="true"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold leading-tight">Dl Gestão</h1>
+                    <h1 class="text-xl font-bold leading-tight">DocManager Pro</h1>
                     <p class="text-xs text-indigo-200">Controle de Vencimentos & Arquivos</p>
                 </div>
             </div>
 
             <div class="flex flex-wrap items-center justify-center gap-3">
                 <span id="userInfo" class="hidden text-xs text-indigo-100"></span>
-
-                <button type="button" onclick="toggleConfigModal()" class="flex items-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-xs sm:text-sm px-3.5 py-2 rounded-lg transition border border-indigo-500/50 shadow-sm">
-                    <i class="fa-solid fa-gear" aria-hidden="true"></i>
-                    <span>Configurar Supabase</span>
-                </button>
 
                 <button id="logoutBtn" type="button" onclick="logout()" class="hidden items-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-xs sm:text-sm px-3.5 py-2 rounded-lg transition border border-indigo-500/50 shadow-sm">
                     <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
@@ -59,10 +54,6 @@
                 <p class="text-xs text-slate-500 mt-1">Informe seu e-mail e sua senha.</p>
             </div>
 
-            <div id="connectionAlert" class="hidden mb-4 bg-amber-50 border-l-4 border-amber-500 p-3 rounded-r-lg text-xs text-amber-800">
-                Supabase não configurado. Clique em <strong>"Configurar Supabase"</strong> no topo da página e informe a URL e a chave pública.
-            </div>
-
             <form id="loginForm" class="space-y-4">
                 <div>
                     <label for="loginUser" class="block text-xs font-semibold text-slate-600 mb-1">E-mail</label>
@@ -73,7 +64,7 @@
                     <input type="password" id="loginPassword" required autocomplete="current-password" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
                 </div>
                 <p id="loginError" class="hidden text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2" role="alert"></p>
-                <button id="loginBtn" type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg shadow-sm transition text-sm disabled:opacity-50 disabled:cursor-not-allowed">Entrar</button>
+                <button id="loginBtn" type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg shadow-sm transition text-sm">Entrar</button>
             </form>
         </div>
     </main>
@@ -232,39 +223,6 @@
                     <button type="submit" id="saveBtn" class="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 shadow-sm transition disabled:opacity-50">Salvar Documento</button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <!-- Modal: Configurações do Supabase -->
-    <div id="configModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="configTitle">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <h3 id="configTitle" class="font-bold text-slate-800 text-base">Conexão com o Supabase</h3>
-                <button type="button" onclick="toggleConfigModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg" aria-label="Fechar">
-                    <i class="fa-solid fa-xmark text-lg" aria-hidden="true"></i>
-                </button>
-            </div>
-
-            <div class="p-6 space-y-4">
-                <p class="text-xs text-slate-500 leading-relaxed">
-                    Informe a URL do projeto e a chave pública. Use somente a chave <strong>anon</strong> ou <strong>publishable</strong>. Nunca informe a chave <strong>service_role</strong>.
-                </p>
-
-                <div>
-                    <label for="supabaseUrlInput" class="block text-xs font-semibold text-slate-600 mb-1">Supabase URL</label>
-                    <input type="url" id="supabaseUrlInput" placeholder="https://xxx.supabase.co" autocomplete="off" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-
-                <div>
-                    <label for="supabaseKeyInput" class="block text-xs font-semibold text-slate-600 mb-1">Supabase Anon / Publishable Key</label>
-                    <input type="password" id="supabaseKeyInput" placeholder="sb_publishable_... ou eyJhbG..." autocomplete="off" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-
-                <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="toggleConfigModal()" class="px-3.5 py-2 text-xs border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50">Cancelar</button>
-                    <button type="button" onclick="saveSupabaseConfig()" class="px-4 py-2 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shadow-sm">Salvar Credenciais</button>
-                </div>
-            </div>
         </div>
     </div>
 

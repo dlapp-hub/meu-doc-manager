@@ -4,6 +4,8 @@ const STORAGE_KEYS = {
     key: "DOC_SUPABASE_KEY"
 };
 const BUCKET = "doc-files";
+const SUPABASE_URL = "https://hipsweaqpqoxmffwvxsr.supabase.co";
+const SUPABASE_KEY = "sb_publishable_zONl2i0QwkMPcQeyAxeYug_084e4zuJ";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = new Map([
     ["application/pdf", "pdf"],
@@ -83,63 +85,21 @@ function validateFile(file) {
 
 // ===== Conexão com o Supabase =====
 function initSupabase() {
-    const url = localStorage.getItem(STORAGE_KEYS.url);
-    const key = localStorage.getItem(STORAGE_KEYS.key);
-
     supabaseClient = null;
 
-    if (url && key && window.supabase) {
-        if (isServiceRoleKey(key)) {
-            localStorage.removeItem(STORAGE_KEYS.key);
-            showToast("Chave service_role detectada e removida. Use a chave anon.", "error");
-        } else {
-            try {
-                supabaseClient = window.supabase.createClient(url, key);
-                document.getElementById("supabaseUrlInput").value = url;
-                document.getElementById("supabaseKeyInput").value = key;
-                supabaseClient.auth.onAuthStateChange((event) => {
-                    if (event === "SIGNED_OUT") showLogin();
-                });
-            } catch (e) {
-                console.error("Erro ao conectar com Supabase:", e);
-                supabaseClient = null;
-            }
-        }
+    if (window.supabase && SUPABASE_KEY !== "COLE_AQUI" && !isServiceRoleKey(SUPABASE_KEY)) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        supabaseClient.auth.onAuthStateChange((event) => {
+            if (event === "SIGNED_OUT") showLogin();
+        });
     }
 
-    document.getElementById("connectionAlert").classList.toggle("hidden", !!supabaseClient);
     return !!supabaseClient;
 }
 
-function saveSupabaseConfig() {
-    const url = document.getElementById("supabaseUrlInput").value.trim();
-    const key = document.getElementById("supabaseKeyInput").value.trim();
 
-    if (!url || !key) {
-        showToast("Preencha ambos os campos para salvar!", "warning");
-        return;
-    }
 
-    try {
-        if (new URL(url).protocol !== "https:") throw new Error("protocolo inválido");
-    } catch {
-        showToast("Informe uma URL https válida do Supabase.", "warning");
-        return;
-    }
 
-    if (isServiceRoleKey(key)) {
-        showToast("Use a chave anon ou publishable. A service_role não pode ser usada aqui.", "error");
-        return;
-    }
-
-    localStorage.setItem(STORAGE_KEYS.url, url);
-    localStorage.setItem(STORAGE_KEYS.key, key);
-
-    initSupabase();
-    toggleConfigModal();
-    showToast("Supabase configurado com sucesso!", "success");
-    restoreSession();
-}
 
 // ===== Login e sessão =====
 async function restoreSession() {
@@ -654,9 +614,6 @@ function editDocument(id) {
     document.getElementById("docModal").classList.remove("hidden");
 }
 
-function toggleConfigModal() {
-    document.getElementById("configModal").classList.toggle("hidden");
-}
 
 // ===== Notificações =====
 const TOAST_ICONS = {
