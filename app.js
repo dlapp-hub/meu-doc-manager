@@ -1,6 +1,6 @@
 // ===== Configuração =====
 const SUPABASE_URL = "https://hipsweaqpqoxmffwvxsr.supabase.co";
-const SUPABASE_KEY = "sb_publishable_zONl2i0QwkMPcQeyAxeYug_084e4zuJ"; // chave publishable (sb_publishable_...) ou anon (eyJ...)
+const SUPABASE_KEY = "COLE_AQUI"; // chave publishable (sb_publishable_...) ou anon (eyJ...)
 
 const BUCKET = "doc-files";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -796,4 +796,70 @@ function updateStats() {
 
     documents.forEach((doc) => {
         const { type } = calculateStatus(doc.dueDate);
-        if (type === "
+        if (type === "ok") ok++;
+        if (type === "warning") warning++;
+        if (type === "expired") expired++;
+    });
+
+    document.getElementById("statTotal").innerText = documents.length;
+    document.getElementById("statOk").innerText = ok;
+    document.getElementById("statWarning").innerText = warning;
+    document.getElementById("statExpired").innerText = expired;
+}
+
+// ===== Modal de documento =====
+function openDocModal() {
+    if (!currentUser?.canCreate) {
+        showToast("Você não tem permissão para cadastrar documentos.", "warning");
+        return;
+    }
+
+    document.getElementById("docForm").reset();
+    document.getElementById("docId").value = "";
+    fillDocCompanySelect("");
+    document.getElementById("modalTitle").innerText = "Novo Documento";
+    document.getElementById("docModal").classList.remove("hidden");
+}
+
+function closeDocModal() {
+    document.getElementById("docModal").classList.add("hidden");
+}
+
+function editDocument(id) {
+    if (!currentUser?.canEdit) {
+        showToast("Você não tem permissão para alterar documentos.", "warning");
+        return;
+    }
+
+    const doc = documents.find((d) => d.id === id);
+    if (!doc) return;
+
+    document.getElementById("docId").value = doc.id;
+    document.getElementById("docTitle").value = doc.title;
+    fillDocCompanySelect(doc.companyId);
+    document.getElementById("docCategory").value = doc.category;
+    document.getElementById("docDueDate").value = doc.dueDate;
+    document.getElementById("docNotes").value = doc.notes || "";
+    document.getElementById("docFile").value = "";
+    document.getElementById("modalTitle").innerText = "Editar Documento";
+    document.getElementById("docModal").classList.remove("hidden");
+}
+
+// ===== Notificações =====
+const TOAST_ICONS = {
+    success: "fa-solid fa-circle-check text-emerald-400 text-base",
+    warning: "fa-solid fa-triangle-exclamation text-amber-400 text-base",
+    error: "fa-solid fa-circle-exclamation text-rose-400 text-base"
+};
+
+function showToast(message, type = "success") {
+    const toast = document.getElementById("toast");
+    document.getElementById("toastMessage").innerText = message;
+    document.getElementById("toastIcon").className = TOAST_ICONS[type] || TOAST_ICONS.error;
+
+    toast.classList.remove("translate-y-20", "opacity-0");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+        toast.classList.add("translate-y-20", "opacity-0");
+    }, 3500);
+}
