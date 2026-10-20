@@ -1,6 +1,8 @@
 // ===== Configuração =====
+// Use a URL do projeto ArquivoDoc e a chave PUBLISHABLE (sb_publishable_...) ou ANON (eyJ...).
+// Nunca use a chave secret ou service_role aqui.
 const SUPABASE_URL = "https://hipsweaqpqoxmffwvxsr.supabase.co";
-const SUPABASE_KEY = "sb_publishable_zONl2i0QwkMPcQeyAxeYug_084e4zuJ"; // chave publishable (sb_publishable_...) ou anon (eyJ...)
+const SUPABASE_KEY = "sb_publishable_zONl2i0QwkMPcQeyAxeYug_084e4zuJ";
 
 const BUCKET = "doc-files";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -17,16 +19,12 @@ const SIGNED_URL_TTL = 60 * 60; // link do anexo válido por 1 hora
 let supabaseClient = null;
 let currentUser = null; // { id, username, isAdmin, canCreate, canEdit, canDelete }
 let documents = [];
-let companies = [];        // todas as empresas (ativas e inativas)
-let editingCompanyId = "";
 let toastTimer = null;
 
 // ===== Inicialização =====
 document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("loginForm").addEventListener("submit", handleLogin);
     document.getElementById("documentsTable").addEventListener("click", handleTableClick);
-    document.getElementById("companyTable").addEventListener("click", handleCompanyTableClick);
-    document.getElementById("companyForm").addEventListener("submit", saveCompany);
 
     document.getElementById("docFile").addEventListener("change", (e) => {
         const error = validateFile(e.target.files[0]);
@@ -40,7 +38,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await restoreSession();
 });
 
-// ===== Utilitários de segurança e formatação =====
+// ===== Utilitários de segurança =====
 function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
         "&": "&amp;",
@@ -84,12 +82,6 @@ function validateFile(file) {
     return null;
 }
 
-function formatCnpj(digits) {
-    const d = String(digits || "").replace(/\D/g, "");
-    if (d.length !== 14) return d;
-    return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
-}
-
 // ===== Conexão com o Supabase =====
 function initSupabase() {
     supabaseClient = null;
@@ -108,7 +100,6 @@ function initSupabase() {
 async function restoreSession() {
     if (!supabaseClient) {
         showLogin();
-        showLoginError("Sistema não configurado. Informe a chave no app.js.");
         return;
     }
 
@@ -130,7 +121,7 @@ async function handleLogin(e) {
     hideLoginError();
 
     if (!supabaseClient) {
-        showLoginError("Sistema não configurado. Informe a chave no app.js.");
+        showLoginError("Sistema sem conexão com o banco. Informe a chave no app.js.");
         return;
     }
     if (!email.includes("@")) {
@@ -175,7 +166,6 @@ async function startSession(userId) {
 
     currentUser = profile;
     showApp();
-    await loadCompanies();
     await loadDocuments();
     return true;
 }
@@ -212,9 +202,7 @@ async function logout() {
 function showLogin() {
     currentUser = null;
     documents = [];
-    companies = [];
     document.getElementById("documentsTable").innerHTML = "";
-    document.getElementById("companyTable").innerHTML = "";
     document.getElementById("loginScreen").classList.remove("hidden");
     document.getElementById("appScreen").classList.add("hidden");
     document.getElementById("userInfo").classList.add("hidden");
@@ -222,8 +210,6 @@ function showLogin() {
     document.getElementById("logoutBtn").classList.remove("flex");
     document.getElementById("btnNewDoc").classList.add("hidden");
     document.getElementById("btnNewDoc").classList.remove("flex");
-    document.getElementById("btnCompanies").classList.add("hidden");
-    document.getElementById("btnCompanies").classList.remove("flex");
 }
 
 function showApp() {
@@ -241,10 +227,6 @@ function showApp() {
     const btnNew = document.getElementById("btnNewDoc");
     btnNew.classList.toggle("hidden", !currentUser.canCreate);
     btnNew.classList.toggle("flex", currentUser.canCreate);
-
-    const btnCompanies = document.getElementById("btnCompanies");
-    btnCompanies.classList.toggle("hidden", !currentUser.isAdmin);
-    btnCompanies.classList.toggle("flex", currentUser.isAdmin);
 }
 
 function showLoginError(message) {
@@ -257,216 +239,14 @@ function hideLoginError() {
     document.getElementById("loginError").classList.add("hidden");
 }
 
-// ===== Empresas: carregamento e seletores =====
-async function loadCompanies() {
-    if (!supabaseClient || !currentUser) return;
-
-    const { data, error } = await supabaseClient
-        .from("companies")
-        .select("id, name, cnpj, active")
-        .order("name", { ascending: true });
-
-    if (error) {
-        console.error("Erro ao carregar empresas:", error);
-        showToast("Não foi possível carregar as empresas.", "error");
-        companies = [];
-    } else {
-        companies = data;
-    }
-
-    fillCompanyFilter();
-    renderCompanyTable();
-}
-
-// Filtro da tela principal: todas as empresas, com ou sem inativas
-function fillCompanyFilter() {
-    const select = document.getElementById("companyFilter");
-    const current = select.value || "all";
-
-    select.innerHTML = `<option value="all">Todas as Empresas</option>` +
-        companies.map((c) =>
-            `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}${c.active ? "" : " (inativa)"}</option>`
-        ).join("");
-
-    select.value = [...select.options].some((o) => o.value === current) ? current : "all";
-}
-
-// Modal de documento: só empresas ativas, mais a empresa atual do documento se estiver inativa
-function fillDocCompanySelect(selectedId = "") {
-    const select = document.getElementById("docCompany");
-    const options = companies.filter((c) => c.active || c.id === selectedId);
-
-    select.innerHTML = `<option value="">Selecione a empresa</option>` +
-        options.map((c) =>
-            `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}${c.active ? "" : " (inativa)"}</option>`
-        ).join("");
-
-    select.value = selectedId || "";
-}
-
-// ===== Empresas: cadastro (somente administrador) =====
-function openCompanyModal() {
-    if (!currentUser?.isAdmin) {
-        showToast("Apenas o administrador cadastra empresas.", "warning");
-        return;
-    }
-    resetCompanyForm();
-    renderCompanyTable();
-    document.getElementById("companyModal").classList.remove("hidden");
-}
-
-function closeCompanyModal() {
-    document.getElementById("companyModal").classList.add("hidden");
-}
-
-function resetCompanyForm() {
-    document.getElementById("companyForm").reset();
-    document.getElementById("companyId").value = "";
-    editingCompanyId = "";
-    document.getElementById("companySaveBtn").innerText = "Salvar Empresa";
-}
-
-function editCompany(id) {
-    const company = companies.find((c) => c.id === id);
-    if (!company) return;
-
-    editingCompanyId = company.id;
-    document.getElementById("companyId").value = company.id;
-    document.getElementById("companyName").value = company.name;
-    document.getElementById("companyCnpj").value = company.cnpj ? formatCnpj(company.cnpj) : "";
-    document.getElementById("companyActive").checked = !!company.active;
-    document.getElementById("companySaveBtn").innerText = "Atualizar Empresa";
-    document.getElementById("companyName").focus();
-}
-
-async function saveCompany(e) {
-    e.preventDefault();
-    if (!currentUser?.isAdmin) {
-        showToast("Apenas o administrador cadastra empresas.", "warning");
-        return;
-    }
-
-    const name = document.getElementById("companyName").value.trim();
-    const cnpjDigits = document.getElementById("companyCnpj").value.replace(/\D/g, "");
-    const active = document.getElementById("companyActive").checked;
-
-    if (!name) {
-        showToast("Informe o nome da empresa.", "warning");
-        return;
-    }
-    if (cnpjDigits && cnpjDigits.length !== 14) {
-        showToast("O CNPJ deve ter 14 dígitos.", "warning");
-        return;
-    }
-
-    const btn = document.getElementById("companySaveBtn");
-    btn.disabled = true;
-
-    const payload = { name, cnpj: cnpjDigits || null, active };
-
-    try {
-        if (editingCompanyId) {
-            const { data, error } = await supabaseClient
-                .from("companies")
-                .update(payload)
-                .eq("id", editingCompanyId)
-                .select("id");
-            if (error) throw error;
-            if (!data.length) throw new Error("Nenhuma empresa foi alterada.");
-            showToast("Empresa atualizada!", "success");
-        } else {
-            const { error } = await supabaseClient.from("companies").insert([payload]);
-            if (error) throw error;
-            showToast("Empresa cadastrada com sucesso!", "success");
-        }
-
-        resetCompanyForm();
-        await loadCompanies();
-        await loadDocuments();
-    } catch (err) {
-        console.error("Erro ao salvar empresa:", err);
-        showToast(
-            err.code === "23505"
-                ? "Já existe uma empresa com esse nome."
-                : "Erro ao salvar empresa. Verifique suas permissões.",
-            "error"
-        );
-    } finally {
-        btn.disabled = false;
-    }
-}
-
-async function deleteCompany(id) {
-    if (!currentUser?.isAdmin) return;
-    if (!confirm("Tem certeza que deseja excluir esta empresa?")) return;
-
-    try {
-        const { data, error } = await supabaseClient
-            .from("companies")
-            .delete()
-            .eq("id", id)
-            .select("id");
-        if (error) throw error;
-        if (!data.length) throw new Error("Nenhuma empresa foi excluída.");
-
-        showToast("Empresa excluída!", "success");
-        await loadCompanies();
-    } catch (err) {
-        console.error("Erro ao excluir empresa:", err);
-        showToast(
-            err.code === "23503"
-                ? "Esta empresa tem documentos vinculados. Desative-a em vez de excluir."
-                : "Erro ao excluir empresa.",
-            "error"
-        );
-    }
-}
-
-function renderCompanyTable() {
-    const tbody = document.getElementById("companyTable");
-
-    if (companies.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-xs text-slate-400">Nenhuma empresa cadastrada.</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = companies.map((c) => `
-        <tr class="hover:bg-slate-50/80 transition">
-            <td class="py-3 px-4 font-medium text-slate-800">${escapeHtml(c.name)}</td>
-            <td class="py-3 px-4 text-slate-600 font-mono text-xs">${c.cnpj ? escapeHtml(formatCnpj(c.cnpj)) : "-"}</td>
-            <td class="py-3 px-4">
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${c.active ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-600"}">
-                    ${c.active ? "Ativa" : "Inativa"}
-                </span>
-            </td>
-            <td class="py-3 px-4 text-right space-x-2">
-                <button type="button" data-company-action="edit" data-id="${escapeHtml(c.id)}" class="text-slate-400 hover:text-indigo-600 transition p-1" title="Editar" aria-label="Editar empresa">
-                    <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
-                </button>
-                <button type="button" data-company-action="delete" data-id="${escapeHtml(c.id)}" class="text-slate-400 hover:text-rose-600 transition p-1" title="Excluir" aria-label="Excluir empresa">
-                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
-                </button>
-            </td>
-        </tr>`).join("");
-}
-
-function handleCompanyTableClick(e) {
-    const btn = e.target.closest("button[data-company-action]");
-    if (!btn) return;
-
-    const id = btn.dataset.id;
-    if (btn.dataset.companyAction === "edit") editCompany(id);
-    if (btn.dataset.companyAction === "delete") deleteCompany(id);
-}
-
-// ===== Documentos: carregamento =====
+// ===== Carregamento =====
 async function loadDocuments() {
     if (!supabaseClient || !currentUser) return;
 
     try {
         const { data, error } = await supabaseClient
             .from("documents")
-            .select("*, companies(name)")
+            .select("*")
             .order("due_date", { ascending: true });
 
         if (error) throw error;
@@ -483,9 +263,8 @@ async function loadDocuments() {
 async function mapRemoteDocument(row) {
     return {
         id: row.id,
+        company: row.company || "",
         title: row.title,
-        companyId: row.company_id || "",
-        companyName: row.companies?.name || "",
         category: row.category,
         dueDate: row.due_date,
         notes: row.notes || "",
@@ -530,14 +309,14 @@ async function removeStoredFile(ref) {
     if (error) console.error("Erro ao remover arquivo do storage:", error);
 }
 
-// ===== Salvar / Atualizar documento =====
+// ===== Salvar / Atualizar =====
 async function handleFormSubmit(e) {
     e.preventDefault();
     if (!currentUser) return;
 
     const id = document.getElementById("docId").value;
+    const company = document.getElementById("docCompany").value.trim();
     const title = document.getElementById("docTitle").value.trim();
-    const companyId = document.getElementById("docCompany").value;
     const category = document.getElementById("docCategory").value;
     const dueDate = document.getElementById("docDueDate").value;
     const notes = document.getElementById("docNotes").value.trim();
@@ -556,12 +335,8 @@ async function handleFormSubmit(e) {
         return;
     }
 
-    if (!companyId) {
-        showToast("Selecione a empresa do documento.", "warning");
-        return;
-    }
-    if (!title || !dueDate || !CATEGORIES.includes(category)) {
-        showToast("Preencha os campos obrigatórios.", "warning");
+    if (!company || !title || !dueDate || !CATEGORIES.includes(category)) {
+        showToast("Preencha os campos obrigatórios, incluindo a empresa.", "warning");
         return;
     }
 
@@ -585,8 +360,8 @@ async function handleFormSubmit(e) {
         }
 
         const payload = {
+            company,
             title,
-            company_id: companyId,
             category,
             due_date: dueDate,
             notes,
@@ -596,6 +371,7 @@ async function handleFormSubmit(e) {
         if (id) {
             const old = documents.find((d) => d.id === id);
 
+            // select() permite detectar bloqueio silencioso pelo RLS
             const { data, error } = await supabaseClient
                 .from("documents")
                 .update(payload)
@@ -627,7 +403,7 @@ async function handleFormSubmit(e) {
     }
 }
 
-// ===== Excluir documento =====
+// ===== Excluir =====
 async function deleteDocument(id) {
     if (!currentUser?.canDelete) {
         showToast("Você não tem permissão para excluir documentos.", "warning");
@@ -676,16 +452,15 @@ function renderDocuments() {
     const tableBody = document.getElementById("documentsTable");
     const emptyState = document.getElementById("emptyState");
     const search = document.getElementById("searchInput").value.toLowerCase();
-    const companyFilter = document.getElementById("companyFilter").value;
     const categoryFilter = document.getElementById("categoryFilter").value;
 
     const filtered = documents.filter((doc) => {
+        const company = (doc.company || "").toLowerCase();
         const title = (doc.title || "").toLowerCase();
         const notes = (doc.notes || "").toLowerCase();
-        const matchesSearch = title.includes(search) || notes.includes(search);
-        const matchesCompany = companyFilter === "all" || doc.companyId === companyFilter;
+        const matchesSearch = company.includes(search) || title.includes(search) || notes.includes(search);
         const matchesCategory = categoryFilter === "all" || doc.category === categoryFilter;
-        return matchesSearch && matchesCompany && matchesCategory;
+        return matchesSearch && matchesCategory;
     });
 
     updateStats();
@@ -735,11 +510,11 @@ function renderDocuments() {
 
         return `
             <tr class="hover:bg-slate-50/80 transition">
+                <td class="py-4 px-6 font-medium text-slate-800">${escapeHtml(doc.company)}</td>
                 <td class="py-4 px-6 font-medium text-slate-800">
                     <div>${escapeHtml(doc.title)}</div>
                     ${doc.notes ? `<div class="text-xs text-slate-400 font-normal mt-0.5 truncate max-w-xs">${escapeHtml(doc.notes)}</div>` : ""}
                 </td>
-                <td class="py-4 px-6 text-slate-600">${doc.companyName ? escapeHtml(doc.companyName) : '<span class="text-xs text-slate-300">Sem empresa</span>'}</td>
                 <td class="py-4 px-6 text-slate-600">
                     <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700">
                         ${escapeHtml(doc.category)}
@@ -807,7 +582,7 @@ function updateStats() {
     document.getElementById("statExpired").innerText = expired;
 }
 
-// ===== Modal de documento =====
+// ===== Modais =====
 function openDocModal() {
     if (!currentUser?.canCreate) {
         showToast("Você não tem permissão para cadastrar documentos.", "warning");
@@ -816,7 +591,6 @@ function openDocModal() {
 
     document.getElementById("docForm").reset();
     document.getElementById("docId").value = "";
-    fillDocCompanySelect("");
     document.getElementById("modalTitle").innerText = "Novo Documento";
     document.getElementById("docModal").classList.remove("hidden");
 }
@@ -835,8 +609,8 @@ function editDocument(id) {
     if (!doc) return;
 
     document.getElementById("docId").value = doc.id;
+    document.getElementById("docCompany").value = doc.company || "";
     document.getElementById("docTitle").value = doc.title;
-    fillDocCompanySelect(doc.companyId);
     document.getElementById("docCategory").value = doc.category;
     document.getElementById("docDueDate").value = doc.dueDate;
     document.getElementById("docNotes").value = doc.notes || "";

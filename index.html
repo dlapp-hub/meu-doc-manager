@@ -35,11 +35,6 @@
             <div class="flex flex-wrap items-center justify-center gap-3">
                 <span id="userInfo" class="hidden text-xs text-indigo-100"></span>
 
-                <button id="btnCompanies" type="button" onclick="openCompanyModal()" class="hidden items-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-xs sm:text-sm px-3.5 py-2 rounded-lg transition border border-indigo-500/50 shadow-sm">
-                    <i class="fa-solid fa-building" aria-hidden="true"></i>
-                    <span>Empresas</span>
-                </button>
-
                 <button id="logoutBtn" type="button" onclick="logout()" class="hidden items-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-xs sm:text-sm px-3.5 py-2 rounded-lg transition border border-indigo-500/50 shadow-sm">
                     <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
                     <span>Sair</span>
@@ -120,18 +115,14 @@
             </div>
         </section>
 
-        <!-- Barra de Busca e Filtros -->
-        <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 mb-6">
+        <!-- Barra de Busca e Filtro -->
+        <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 mb-6">
             <div class="flex flex-col sm:flex-row gap-3 flex-1">
                 <div class="relative flex-1">
                     <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"></i>
                     <label for="searchInput" class="sr-only">Buscar documentos</label>
-                    <input type="text" id="searchInput" oninput="renderDocuments()" placeholder="Buscar por nome ou observação..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition">
+                    <input type="text" id="searchInput" oninput="renderDocuments()" placeholder="Buscar por empresa, documento ou observação..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition">
                 </div>
-                <label for="companyFilter" class="sr-only">Filtrar por empresa</label>
-                <select id="companyFilter" onchange="renderDocuments()" class="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-600">
-                    <option value="all">Todas as Empresas</option>
-                </select>
                 <label for="categoryFilter" class="sr-only">Filtrar por categoria</label>
                 <select id="categoryFilter" onchange="renderDocuments()" class="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-600">
                     <option value="all">Todas as Categorias</option>
@@ -155,8 +146,8 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-50/70 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                            <th scope="col" class="py-4 px-6">Documento</th>
                             <th scope="col" class="py-4 px-6">Empresa</th>
+                            <th scope="col" class="py-4 px-6">Documento</th>
                             <th scope="col" class="py-4 px-6">Categoria</th>
                             <th scope="col" class="py-4 px-6">Vencimento</th>
                             <th scope="col" class="py-4 px-6">Status</th>
@@ -195,15 +186,13 @@
                 <input type="hidden" id="docId">
 
                 <div>
-                    <label for="docTitle" class="block text-xs font-semibold text-slate-600 mb-1">Nome do Documento *</label>
-                    <input type="text" id="docTitle" required maxlength="150" placeholder="Ex: Emplacamento HB20 2026" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                    <label for="docCompany" class="block text-xs font-semibold text-slate-600 mb-1">Empresa *</label>
+                    <input type="text" id="docCompany" required maxlength="150" placeholder="Ex: ITL Caucaia" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
                 </div>
 
                 <div>
-                    <label for="docCompany" class="block text-xs font-semibold text-slate-600 mb-1">Empresa *</label>
-                    <select id="docCompany" required class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
-                        <option value="">Selecione a empresa</option>
-                    </select>
+                    <label for="docTitle" class="block text-xs font-semibold text-slate-600 mb-1">Nome do Documento *</label>
+                    <input type="text" id="docTitle" required maxlength="150" placeholder="Ex: Emplacamento HB20 2026" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -240,62 +229,6 @@
                     <button type="submit" id="saveBtn" class="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 shadow-sm transition disabled:opacity-50">Salvar Documento</button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <!-- Modal: Cadastro de Empresas (somente administrador) -->
-    <div id="companyModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="companyModalTitle">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <h3 id="companyModalTitle" class="font-bold text-slate-800 text-lg">Empresas</h3>
-                <button type="button" onclick="closeCompanyModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg" aria-label="Fechar">
-                    <i class="fa-solid fa-xmark text-lg" aria-hidden="true"></i>
-                </button>
-            </div>
-
-            <div class="p-6 overflow-y-auto space-y-6">
-                <form id="companyForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                    <input type="hidden" id="companyId">
-
-                    <div class="sm:col-span-2">
-                        <label for="companyName" class="block text-xs font-semibold text-slate-600 mb-1">Nome da empresa *</label>
-                        <input type="text" id="companyName" required maxlength="150" placeholder="Ex: Gestão Financeira de Ativos" class="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
-                    </div>
-
-                    <div>
-                        <label for="companyCnpj" class="block text-xs font-semibold text-slate-600 mb-1">CNPJ (opcional)</label>
-                        <input type="text" id="companyCnpj" maxlength="18" placeholder="Somente números" class="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
-                    </div>
-
-                    <div class="flex items-end">
-                        <label class="flex items-center gap-2 text-xs font-semibold text-slate-600 pb-2">
-                            <input type="checkbox" id="companyActive" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                            Empresa ativa
-                        </label>
-                    </div>
-
-                    <div class="sm:col-span-2 flex justify-end gap-3">
-                        <button type="button" onclick="resetCompanyForm()" class="px-4 py-2 border border-slate-200 text-slate-600 text-sm rounded-lg hover:bg-white transition">Limpar</button>
-                        <button type="submit" id="companySaveBtn" class="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 shadow-sm transition disabled:opacity-50">Salvar Empresa</button>
-                    </div>
-                </form>
-
-                <div class="bg-white rounded-xl border border-slate-100 overflow-hidden">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-50/70 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                <th scope="col" class="py-3 px-4">Nome</th>
-                                <th scope="col" class="py-3 px-4">CNPJ</th>
-                                <th scope="col" class="py-3 px-4">Status</th>
-                                <th scope="col" class="py-3 px-4 text-right">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="companyTable" class="divide-y divide-slate-100 text-sm">
-                            <!-- Carregado via JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         </div>
     </div>
 
