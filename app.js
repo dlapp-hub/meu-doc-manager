@@ -19,12 +19,18 @@ const SIGNED_URL_TTL = 60 * 60; // link do anexo válido por 1 hora
 let supabaseClient = null;
 let currentUser = null; // { id, username, isAdmin, canCreate, canEdit, canDelete }
 let documents = [];
+let companies = [];
 let toastTimer = null;
 
 // ===== Inicialização =====
 document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("loginForm").addEventListener("submit", handleLogin);
     document.getElementById("documentsTable").addEventListener("click", handleTableClick);
+
+    document.getElementById("companyList").addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-action='delete-company']");
+        if (btn) deleteCompany(btn.dataset.id);
+    });
 
     document.getElementById("docFile").addEventListener("change", (e) => {
         const error = validateFile(e.target.files[0]);
@@ -121,7 +127,7 @@ async function handleLogin(e) {
     hideLoginError();
 
     if (!supabaseClient) {
-        showLoginError("Sistema sem conexão com o banco. Informe a chave no app.js.");
+        showLoginError("Sistema sem conexão com o banco. Verifique a chave no app.js.");
         return;
     }
     if (!email.includes("@")) {
@@ -166,6 +172,7 @@ async function startSession(userId) {
 
     currentUser = profile;
     showApp();
+    await loadCompanies();
     await loadDocuments();
     return true;
 }
@@ -202,6 +209,7 @@ async function logout() {
 function showLogin() {
     currentUser = null;
     documents = [];
+    companies = [];
     document.getElementById("documentsTable").innerHTML = "";
     document.getElementById("loginScreen").classList.remove("hidden");
     document.getElementById("appScreen").classList.add("hidden");
@@ -210,6 +218,8 @@ function showLogin() {
     document.getElementById("logoutBtn").classList.remove("flex");
     document.getElementById("btnNewDoc").classList.add("hidden");
     document.getElementById("btnNewDoc").classList.remove("flex");
+    document.getElementById("btnCompanies").classList.add("hidden");
+    document.getElementById("btnCompanies").classList.remove("flex");
 }
 
 function showApp() {
@@ -227,6 +237,10 @@ function showApp() {
     const btnNew = document.getElementById("btnNewDoc");
     btnNew.classList.toggle("hidden", !currentUser.canCreate);
     btnNew.classList.toggle("flex", currentUser.canCreate);
+
+    const btnCompanies = document.getElementById("btnCompanies");
+    btnCompanies.classList.toggle("hidden", !currentUser.isAdmin);
+    btnCompanies.classList.toggle("flex", currentUser.isAdmin);
 }
 
 function showLoginError(message) {
@@ -239,14 +253,114 @@ function hideLoginError() {
     document.getElementById("loginError").classList.add("hidden");
 }
 
-// ===== Carregamento =====
+// ===== Empresas =====
+async function loadCompanies() {
+    if (!supabaseClient || !currentUser) return;
+
+    const { data, error } = await supabaseClient
+        .from("companies")
+        .select("id, name")
+        .order("name", { ascending: true });
+
+    if (error) {
+        console.error("Erro ao carregar empresas:", error);
+        showToast("Não foi possível carregar as empresas.", "error");
+        return;
+    }
+
+    companies = data;
+
+    const select = document.getElementById("docCompany");
+    const options = companies
+        .map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`)
+        .join("");
+    select.innerHTML = `<option value="">Selecione a empresa</option>${options}`;
+
+    renderCompanyList();
+}
+
+function renderCompanyList() {
+    const list = document.getElementById("companyList");
+
+    if (!companies.length) {
+        list.innerHTML = `<li class="text-xs text-slate-400 py-3">Nenhuma empresa cadastrada.</li>`;
+        return;
+    }
+
+    list.innerHTML = companies.map((c) => `
+        <li class="flex justify-between items-center py-2 text-sm text-slate-700">
+            <span>${escapeHtml(c.name)}</span>
+            <button type="button" data-action="delete-company" data-id="${escapeHtml(c.id)}" class="text-slate-400 hover:text-rose-600 p-1" title="Excluir empresa" aria-label="Excluir empresa">
+                <i class="fa-solid fa-trash" aria-hidden="true"></i>
+            </button>
+        </li>`).join("");
+}
+
+async function addCompany(e) {
+    e.preventDefault();
+    if (!currentUser?.isAdmin) return;
+
+    const input = document.getElementById("newCompanyName");
+    const name = input.value.trim();
+    if (!name) {
+        showToast("Informe o nome da empresa.", "warning");
+        return;
+    }
+
+    const { error } = await supabaseClient.from("companies").insert([{ name }]);
+    if (error) {
+        console.error("Erro ao cadastrar empresa:", error);
+        showToast(error.code === "23505" ? "Essa empresa já está cadastrada." : "Erro ao cadastrar empresa.", "error");
+        return;
+    }
+
+    input.value = "";
+    showToast("Empresa cadastrada!", "success");
+    await loadCompanies();
+}
+
+async function deleteCompany(id) {
+    if (!currentUser?.isAdmin) return;
+
+    const name = companies.find((c) => c.id === id)?.name || "esta empresa";
+    if (!confirm(`Excluir ${name}?`)) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from("companies")
+            .delete()
+            .eq("id", id)
+            .select("id");
+        if (error) throw error;
+        if (!data.length) throw new Error("Nenhuma empresa foi excluída.");
+
+        showToast("Empresa excluída!", "success");
+        await loadCompanies();
+        await loadDocuments();
+    } catch (err) {
+        console.error("Erro ao excluir empresa:", err);
+        showToast("Não é possível excluir: a empresa tem documentos vinculados.", "error");
+    }
+}
+
+function openCompanyModal() {
+    if (!currentUser?.isAdmin) return;
+    renderCompanyList();
+    document.getElementById("companyModal").classList.remove("hidden");
+}
+
+function closeCompanyModal() {
+    document.getElementById("companyModal").classList.add("hidden");
+}
+
+// ===== Carregamento de documentos =====
 async function loadDocuments() {
     if (!supabaseClient || !currentUser) return;
 
     try {
         const { data, error } = await supabaseClient
             .from("documents")
-            .select("*")
+            .select("*, companies(name)")
             .order("due_date", { ascending: true });
 
         if (error) throw error;
@@ -263,7 +377,8 @@ async function loadDocuments() {
 async function mapRemoteDocument(row) {
     return {
         id: row.id,
-        company: row.company || "",
+        companyId: row.company_id || "",
+        company: row.companies?.name || "",
         title: row.title,
         category: row.category,
         dueDate: row.due_date,
@@ -315,7 +430,7 @@ async function handleFormSubmit(e) {
     if (!currentUser) return;
 
     const id = document.getElementById("docId").value;
-    const company = document.getElementById("docCompany").value.trim();
+    const companyId = document.getElementById("docCompany").value;
     const title = document.getElementById("docTitle").value.trim();
     const category = document.getElementById("docCategory").value;
     const dueDate = document.getElementById("docDueDate").value;
@@ -335,7 +450,7 @@ async function handleFormSubmit(e) {
         return;
     }
 
-    if (!company || !title || !dueDate || !CATEGORIES.includes(category)) {
+    if (!companyId || !title || !dueDate || !CATEGORIES.includes(category)) {
         showToast("Preencha os campos obrigatórios, incluindo a empresa.", "warning");
         return;
     }
@@ -360,7 +475,7 @@ async function handleFormSubmit(e) {
         }
 
         const payload = {
-            company,
+            company_id: companyId,
             title,
             category,
             due_date: dueDate,
@@ -403,7 +518,7 @@ async function handleFormSubmit(e) {
     }
 }
 
-// ===== Excluir =====
+// ===== Excluir documento =====
 async function deleteDocument(id) {
     if (!currentUser?.canDelete) {
         showToast("Você não tem permissão para excluir documentos.", "warning");
@@ -510,7 +625,7 @@ function renderDocuments() {
 
         return `
             <tr class="hover:bg-slate-50/80 transition">
-                <td class="py-4 px-6 font-medium text-slate-800">${escapeHtml(doc.company)}</td>
+                <td class="py-4 px-6 font-medium text-slate-800">${escapeHtml(doc.company || "Sem empresa")}</td>
                 <td class="py-4 px-6 font-medium text-slate-800">
                     <div>${escapeHtml(doc.title)}</div>
                     ${doc.notes ? `<div class="text-xs text-slate-400 font-normal mt-0.5 truncate max-w-xs">${escapeHtml(doc.notes)}</div>` : ""}
@@ -609,7 +724,7 @@ function editDocument(id) {
     if (!doc) return;
 
     document.getElementById("docId").value = doc.id;
-    document.getElementById("docCompany").value = doc.company || "";
+    document.getElementById("docCompany").value = doc.companyId || "";
     document.getElementById("docTitle").value = doc.title;
     document.getElementById("docCategory").value = doc.category;
     document.getElementById("docDueDate").value = doc.dueDate;

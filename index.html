@@ -35,6 +35,11 @@
             <div class="flex flex-wrap items-center justify-center gap-3">
                 <span id="userInfo" class="hidden text-xs text-indigo-100"></span>
 
+                <button id="btnCompanies" type="button" onclick="openCompanyModal()" class="hidden items-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-xs sm:text-sm px-3.5 py-2 rounded-lg transition border border-indigo-500/50 shadow-sm">
+                    <i class="fa-solid fa-building" aria-hidden="true"></i>
+                    <span>Empresas</span>
+                </button>
+
                 <button id="logoutBtn" type="button" onclick="logout()" class="hidden items-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-xs sm:text-sm px-3.5 py-2 rounded-lg transition border border-indigo-500/50 shadow-sm">
                     <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
                     <span>Sair</span>
@@ -187,7 +192,9 @@
 
                 <div>
                     <label for="docCompany" class="block text-xs font-semibold text-slate-600 mb-1">Empresa *</label>
-                    <input type="text" id="docCompany" required maxlength="150" placeholder="Ex: ITL Caucaia" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                    <select id="docCompany" required class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                        <option value="">Carregando empresas...</option>
+                    </select>
                 </div>
 
                 <div>
@@ -229,6 +236,28 @@
                     <button type="submit" id="saveBtn" class="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 shadow-sm transition disabled:opacity-50">Salvar Documento</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal: Cadastro de Empresas (somente administrador) -->
+    <div id="companyModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="companyModalTitle">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 id="companyModalTitle" class="font-bold text-slate-800 text-lg">Empresas</h3>
+                <button type="button" onclick="closeCompanyModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg" aria-label="Fechar">
+                    <i class="fa-solid fa-xmark text-lg" aria-hidden="true"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <form id="companyForm" onsubmit="addCompany(event)" class="flex gap-2">
+                    <label for="newCompanyName" class="sr-only">Nome da empresa</label>
+                    <input type="text" id="newCompanyName" required maxlength="150" placeholder="Nome da empresa" class="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 shadow-sm transition">Adicionar</button>
+                </form>
+
+                <ul id="companyList" class="divide-y divide-slate-100 max-h-80 overflow-y-auto"></ul>
+            </div>
         </div>
     </div>
 
