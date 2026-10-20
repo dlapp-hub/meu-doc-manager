@@ -1,6 +1,6 @@
 // ===== Configuração =====
 const SUPABASE_URL = "https://hipsweaqpqoxmffwvxsr.supabase.co";
-const SUPABASE_KEY = "COLE_AQUI"; // chave publishable (sb_publishable_...) ou anon (eyJ...)
+const SUPABASE_KEY = "sb_publishable_zONl2i0QwkMPcQeyAxeYug_084e4zuJ"; // chave publishable (sb_publishable_...) ou anon (eyJ...)
 
 const BUCKET = "doc-files";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
